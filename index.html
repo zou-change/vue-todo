@@ -11,7 +11,7 @@
 	<head>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<title>Template • TodoMVCdddddddddf</title>
+		<title>Template • TodoMVC</title>
 		<link rel="stylesheet" href="node_modules/todomvc-common/base.css">
 		<link rel="stylesheet" href="node_modules/todomvc-app-css/index.css">
 		<!-- CSS overrides - remove if you don't need it -->
@@ -21,8 +21,8 @@
 	<body>
 		<section class="todoapp">
 			<header class="header">
-				<h1>todos</h1>
-				<input class="new-todo" placeholder="What needs to be done?" autofocus>
+				<h1>something</h1>
+				<input class="new-todo" v-model = "contents" v-on:keyup.enter="add()" placeholder="What needs to be done?" autofocus>
 			</header>
 			<!-- This section should be hidden by default and shown when there are todos -->
 			<section class="main">
@@ -31,22 +31,22 @@
 				<ul class="todo-list">
 					<!-- These are here just to show the structure of the list items -->
 					<!-- List items should get the class `editing` when editing and `completed` when marked as completed -->
-					<li class="completed">
+					<li v-for="(item,index) in todos" :class="{completed : item.status}" >
 						<div class="view">
-							<input class="toggle" type="checkbox" checked>
-							<label>Taste JavaScript</label>
+							<input class="toggle" type="checkbox" :checked = "item.status" v-on:click="changeStatus(index)">
+							<label>{{item.title}}</label>
 							<button class="destroy"></button>
 						</div>
 						<input class="edit" value="Create a TodoMVC template">
 					</li>
-					<li>
+					<!-- <li>
 						<div class="view">
 							<input class="toggle" type="checkbox">
 							<label>Buy a unicorn</label>
 							<button class="destroy"></button>
 						</div>
 						<input class="edit" value="Rule the web">
-					</li>
+					</li> -->
 				</ul>
 			</section>
 			<!-- This footer should hidden by default and shown when there are todos -->
@@ -71,9 +71,29 @@
 		</section>
 		<script>
 			var app = new Vue({
-				el:".todoapp"
+				el:".todoapp",
+				data:{
+					todos:[],
+					contents:''
+				},
+				methods: {
+					add (data){
+						// console.log(this.todos.length)
+						var todoId = this.todos.length == 0 ? 1 : this.todos[this.todos.length - 1].id + 1
+						var todoTitle = this.contents
+						var status = true
+						data = {"id":todoId,"title":todoTitle,"status":status}
+						this.todos.push(data)
+					},
+					changeStatus(index){
+						this.todos[index].status = !this.todos[index].status
+					}
+				},
+				computed: {
+				},
 			})
 		</script>
+
 		<footer class="info">
 			<p>Double-click to edit a todo</p>
 			<!-- Remove the below line ↓ -->
