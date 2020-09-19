@@ -22,26 +22,31 @@
 		<section class="todoapp">
 			<header class="header">
 				<h1>something</h1>
-				<input class="new-todo" v-model = "contents" v-on:keyup.enter="add()" placeholder="What needs to be done?" autofocus>
+				<input class="new-todo" @keyup.enter="add" placeholder="What needs to be done?" autofocus>
 			</header>
 			<!-- This section should be hidden by default and shown when there are todos -->
+		<template v-if="todos.length">
 			<section class="main">
-				<input id="toggle-all" class="toggle-all" type="checkbox">
+				<input id="toggle-all" class="toggle-all" type="checkbox" v-model="getComputered">
 				<label for="toggle-all">Mark all as complete</label>
 				<ul class="todo-list">
 					<!-- These are here just to show the structure of the list items -->
 					<!-- List items should get the class `editing` when editing and `completed` when marked as completed -->
-					<li v-for="(item,index) in todos" :class="{completed : item.status}" >
+					<li v-for="(item,index) in todos" :class="{completed : item.status,editing : getEditing === item}" >
 						<div class="view">
-							<input class="toggle" type="checkbox" :checked = "item.status" v-on:click="changeStatus(index)">
-							<label>{{item.title}}</label>
-							<button class="destroy"></button>
+							<input class="toggle" type="checkbox" v-model:checked = "item.status" >
+							<label @dblclick="handelGetEditing(item)" >{{item.title}}</label>
+							<button class="destroy" @click="deleteTodo(index)"></button>
 						</div>
-						<input class="edit" value="Create a TodoMVC template">
+						<input class="edit" 
+						:value="item.title"
+						@keyup.enter="handelRemoveEditing(item,index,$event)"
+						@blur="handelRemoveEditing(item,index,$event)"
+						@keyup.esc="handelCencelEdi">
 					</li>
 					<!-- <li>
 						<div class="view">
-							<input class="toggle" type="checkbox">
+label							<input class="toggle" type="checkbox">
 							<label>Buy a unicorn</label>
 							<button class="destroy"></button>
 						</div>
@@ -52,46 +57,144 @@
 			<!-- This footer should hidden by default and shown when there are todos -->
 			<footer class="footer">
 				<!-- This should be `0 items left` by default -->
-				<span class="todo-count"><strong>0</strong> item left</span>
+				<span class="todo-count"><strong>{{getRemainingCount}}</strong> item left</span>
 				<!-- Remove this if you don't implement routing -->
 				<ul class="filters">
 					<li>
-						<a class="selected" href="#/">All</a>
+						<a v-bind:class="{selected : hash == '#/' ? true : false,}" href="#/" @click="changeHash('#/')">All</a>
 					</li>
 					<li>
-						<a href="#/active">Active</a>
+						<a href="#/active" v-bind:class="{selected : hash == '#/active' ? true : false}" @click="changeHash('#/active')">Active</a>
 					</li>
 					<li>
-						<a href="#/completed">Completed</a>
+						<a href="#/completed" v-bind:class="{selected : hash == '#/completed' ? true : false}" @click="changeHash('#/completed')">Completed</a>
 					</li>
 				</ul>
 				<!-- Hidden if no completed items are left ↓ -->
-				<button class="clear-completed">Clear completed</button>
+				<button class="clear-completed"
+				v-if="todos.some(item => item.status)"
+				@click="handelCleanDoneAll"
+				>Clear completed</button>
 			</footer>
+		</template>
 		</section>
 		<script>
 			var app = new Vue({
 				el:".todoapp",
 				data:{
-					todos:[],
-					contents:''
+					todos:JSON.parse(window.localStorage.todos) || [],
+					contents:'',
+					hash:'#/',
+					//middle variable
+					getEditing:null
+				},
+				watch: {
+					todos:{
+						handler:function(val,oldval){
+							window.localStorage.todos = JSON.stringify(val)
+						},
+						deep:true
+					}
 				},
 				methods: {
-					add (data){
-						// console.log(this.todos.length)
-						var todoId = this.todos.length == 0 ? 1 : this.todos[this.todos.length - 1].id + 1
-						var todoTitle = this.contents
-						var status = true
-						data = {"id":todoId,"title":todoTitle,"status":status}
+					//slide status all
+					handleStatusAll(e){
+						checked = e.target.checked
+						//箭头函数
+						this.todos.forEach(element => 
+							element.status = checked
+						);
+						// this.todos.forEach(function(element){
+						// 	element.status = checked
+						// })
+					},
+					//添加事情
+					add (e){
+						//判断是否为空字符(根据取反来判断，秒阿)
+						if(!e.target.value.trim().length){return}
+						var todoId = this.todos.length ? this.todos[this.todos.length - 1].id + 1 : 1
+						var todoTitle = e.target.value
+						data = {"id":todoId,"title":todoTitle,"status":false}
 						this.todos.push(data)
 					},
-					changeStatus(index){
-						this.todos[index].status = !this.todos[index].status
+					changeHash(hash){
+						if(this.hash == hash){return false}
+						this.hash = hash
+						if(hash == '#/active'){
+							this.num = 0
+							for(var i = 0;i < this.todos.length;i++){
+								if(this.todos[i].status == false){
+									this.num++
+								}
+							}
+							return this.num
+						}
+					},
+					//delete
+					deleteTodo(index){
+						this.todos.splice(index,1)
+					},
+					//change the middle variable
+					handelGetEditing(item){
+						this.getEditing = item
+					},
+					//remove the middle variable
+					handelRemoveEditing(todo,index,e){
+						this.getEditing = null
+						var target = e.target
+						if(!target.value.length){
+							this.todos.splice(index,1)
+						}else{
+							todo.title = e.target.value
+						}
+					},
+					//Esc cencel write
+					handelCencelEdi(){
+						this.getEditing = null
+					},
+					//cleaning done all
+					handelCleanDoneAll(){
+						//这里要注意删除的方法
+						var leng = this.todos.length - 1
+						// //No.1
+						// for(let i = leng;i >= 0;i--){
+						// 	if(this.todos[i].status){
+						// 		this.todos.splice(i,1)
+						// 	}
+						// }
+						// //No.2
+						// for(let i = 0;i >= leng;i++){
+						// 	if(this.todos[i].status){
+						// 		this.todos.splice(i,1)
+						// 		//注意删除内容之后索引要复位
+						// 		i--
+						// 	}
+						// }
+						//No.3
+						this.todos = this.todos.filter(item => !item.status)
 					}
 				},
 				computed: {
+					//计算总任务数量,计算属性只会调用一次并且缓存起来，
+					//减少了函数调用的次数，极大提高了性能
+					//简写：
+					getRemainingCount(){
+						return this.todos.filter(t => !t.status).length
+					},
+					//计算属性完整写法
+					getComputered:{
+						get(){
+							return this.todos.every(t => t.status)
+						},
+						set(e){
+							console.log(e)
+						//箭头函数
+						this.todos.forEach(element => element.status = e);
+						}
+					}
 				},
 			})
+			
 		</script>
 
 		<footer class="info">
@@ -103,7 +206,7 @@
 			<p>Part of <a href="http://todomvc.com">TodoMVC</a></p>
 		</footer>
 		<!-- Scripts here. Don't remove ↓ -->
-		<script src="node_modules/todomvc-common/base.js"></script>
+		<!-- <script src="node_modules/todomvc-common/base.js"></script> -->
 		<script src="js/app.js"></script>
 	</body>
 </html>
